@@ -1,13 +1,23 @@
 import { useState } from 'react'
-import { formatDistanceToNow, isPast, format } from 'date-fns'
-import { Clock, CheckCircle, XCircle, AlertCircle, Calendar, Timer } from 'lucide-react'
+import { formatDistanceToNow, isPast, differenceInHours } from 'date-fns'
+import { CheckCircle, XCircle, Timer, User, Clock } from 'lucide-react'
 import useStore from '../store/useStore'
+import MemberAvatar from './MemberAvatar'
 
-const STATUS_STYLES = {
-  pending_acceptance: { bg: 'bg-yellow-50', border: 'border-yellow-300', badge: 'bg-yellow-100 text-yellow-800', label: 'Awaiting Acceptance' },
-  assigned: { bg: 'bg-blue-50', border: 'border-blue-300', badge: 'bg-blue-100 text-blue-800', label: 'Assigned' },
-  completed: { bg: 'bg-green-50', border: 'border-green-300', badge: 'bg-green-100 text-green-800', label: 'Completed' },
-  declined: { bg: 'bg-gray-50', border: 'border-gray-300', badge: 'bg-gray-100 text-gray-600', label: 'Declined' },
+function getDeadlineInfo(deadline, status) {
+  if (status === 'completed') return { color: '#a1a1aa', label: null, bg: null }
+  const hours = differenceInHours(new Date(deadline), new Date())
+  if (isPast(new Date(deadline))) return { color: '#ef4444', label: 'Overdue', bg: '#fef2f2' }
+  if (hours < 3) return { color: '#f97316', label: 'Due soon', bg: '#fff7ed' }
+  if (hours < 24) return { color: '#eab308', label: null, bg: null }
+  return { color: '#a1a1aa', label: null, bg: null }
+}
+
+const LEFT_COLORS = {
+  pending_acceptance: '#f59e0b',
+  assigned: '#6366f1',
+  completed: '#22c55e',
+  declined: '#d4d4d8',
 }
 
 export default function ChoreCard({ chore, showActions = true }) {
@@ -18,14 +28,13 @@ export default function ChoreCard({ chore, showActions = true }) {
   const acceptChore = useStore(s => s.acceptChore)
   const declineChore = useStore(s => s.declineChore)
   const completeChore = useStore(s => s.completeChore)
-  const deleteChore = useStore(s => s.deleteChore)
 
   const assignee = members.find(m => m.id === chore.assignedTo)
   const creator = members.find(m => m.id === chore.createdBy)
-  const deadline = new Date(chore.deadline)
-  const isOverdue = isPast(deadline) && chore.status !== 'completed'
-  const style = STATUS_STYLES[chore.status] || STATUS_STYLES.assigned
   const isMyChore = chore.assignedTo === activeMemberId
+  const isOverdue = isPast(new Date(chore.deadline)) && chore.status !== 'completed'
+  const dl = getDeadlineInfo(chore.deadline, chore.status)
+  const leftColor = isOverdue ? '#ef4444' : LEFT_COLORS[chore.status] || '#d4d4d8'
 
   function handleComplete() {
     const mins = parseInt(actualMinutes, 10)
@@ -35,110 +44,122 @@ export default function ChoreCard({ chore, showActions = true }) {
   }
 
   return (
-    <div className={`rounded-xl border-2 p-4 ${style.bg} ${style.border} ${isOverdue ? 'border-red-400 bg-red-50' : ''}`}>
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="font-semibold text-gray-900 text-sm">{chore.title}</h3>
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${style.badge}`}>
-              {isOverdue ? 'OVERDUE' : style.label}
-            </span>
-          </div>
-          {chore.description && (
-            <p className="text-xs text-gray-600 mt-0.5">{chore.description}</p>
-          )}
-        </div>
-        {assignee && (
-          <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-            style={{ backgroundColor: assignee.color }}
-            title={assignee.name}
-          >
-            {assignee.name[0]}
-          </div>
-        )}
-      </div>
+    <div
+      className="bg-white rounded-2xl p-4 flex gap-3"
+      style={{
+        borderLeft: `4px solid ${leftColor}`,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
+      }}
+    >
+      {assignee && <MemberAvatar memberId={chore.assignedTo} size={36} className="mt-0.5" />}
 
-      <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-600">
-        <span className="flex items-center gap-1">
-          <Timer size={12} />
-          Est. {chore.estimatedMinutes}m
-          {chore.actualMinutes && ` · Actual ${chore.actualMinutes}m`}
-        </span>
-        <span className={`flex items-center gap-1 ${isOverdue ? 'text-red-600 font-medium' : ''}`}>
-          <Calendar size={12} />
-          {isOverdue ? 'Due ' : 'Due '}
-          {formatDistanceToNow(deadline, { addSuffix: true })}
-        </span>
-        {creator && (
+      <div className="flex-1 min-w-0">
+        {/* Title + status */}
+        <div className="flex items-start justify-between gap-2 mb-1">
+          <h3 className="font-bold text-zinc-900 leading-snug">{chore.title}</h3>
+          <div className="shrink-0 flex items-center gap-1.5">
+            {chore.status === 'pending_acceptance' && (
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: '#fef3c7', color: '#92400e' }}>Pending</span>
+            )}
+            {chore.status === 'completed' && (
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1" style={{ backgroundColor: '#dcfce7', color: '#166534' }}>
+                <CheckCircle size={10} /> Done
+              </span>
+            )}
+            {chore.category && (
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#f4f4f8', color: '#71717a' }}>{chore.category}</span>
+            )}
+          </div>
+        </div>
+
+        {chore.description && (
+          <p className="text-sm mb-2" style={{ color: '#71717a' }}>{chore.description}</p>
+        )}
+
+        {/* Deadline */}
+        <p className="text-sm font-semibold mb-2" style={{ color: dl.color }}>
+          {dl.label && <span className="mr-1">{dl.label} ·</span>}
+          Due {formatDistanceToNow(new Date(chore.deadline), { addSuffix: true })}
+        </p>
+
+        {/* Meta row */}
+        <div className="flex flex-wrap gap-3 text-xs" style={{ color: '#a1a1aa' }}>
           <span className="flex items-center gap-1">
-            <Clock size={12} />
-            by {creator.name}
+            <Timer size={11} />
+            {chore.estimatedMinutes}m est{chore.actualMinutes ? ` · ${chore.actualMinutes}m actual` : ''}
           </span>
-        )}
-      </div>
-
-      {chore.status === 'completed' && (
-        <div className="mt-2 flex items-center gap-1 text-xs text-green-700">
-          <CheckCircle size={12} />
-          {chore.onTime ? 'Completed on time' : 'Completed (late)'}
-          {chore.actualMinutes && ` · took ${chore.actualMinutes}m`}
+          {creator && creator.id !== chore.assignedTo && (
+            <span className="flex items-center gap-1">
+              <User size={11} /> by {creator.name}
+            </span>
+          )}
+          {chore.status === 'completed' && (
+            <span className="flex items-center gap-1 font-semibold" style={{ color: chore.onTime ? '#16a34a' : '#ea580c' }}>
+              <Clock size={11} /> {chore.onTime ? 'On time' : 'Late'}
+            </span>
+          )}
         </div>
-      )}
 
-      {showActions && isMyChore && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {chore.status === 'pending_acceptance' && (
-            <>
-              <button
-                onClick={() => acceptChore(chore.id)}
-                className="flex items-center gap-1 text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg font-medium transition-colors"
-              >
-                <CheckCircle size={12} /> Accept
-              </button>
-              <button
-                onClick={() => declineChore(chore.id)}
-                className="flex items-center gap-1 text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1.5 rounded-lg font-medium transition-colors"
-              >
-                <XCircle size={12} /> Decline
-              </button>
-            </>
-          )}
-          {chore.status === 'assigned' && !showComplete && (
+        {/* Actions */}
+        {showActions && isMyChore && chore.status === 'pending_acceptance' && (
+          <div className="flex gap-2 mt-3">
             <button
-              onClick={() => setShowComplete(true)}
-              className="flex items-center gap-1 text-xs bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg font-medium transition-colors"
+              onClick={() => acceptChore(chore.id)}
+              className="flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl text-white transition-all"
+              style={{ backgroundColor: '#16a34a' }}
             >
-              <CheckCircle size={12} /> Mark Complete
+              <CheckCircle size={14} /> Accept
             </button>
-          )}
-          {chore.status === 'assigned' && showComplete && (
-            <div className="flex items-center gap-2 w-full">
-              <label className="text-xs text-gray-700 shrink-0">Actual time (min):</label>
+            <button
+              onClick={() => declineChore(chore.id)}
+              className="flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all"
+              style={{ backgroundColor: '#f4f4f5', color: '#52525b' }}
+            >
+              <XCircle size={14} /> Decline
+            </button>
+          </div>
+        )}
+
+        {showActions && isMyChore && chore.status === 'assigned' && !showComplete && (
+          <button
+            onClick={() => setShowComplete(true)}
+            className="mt-3 text-sm font-semibold px-4 py-2 rounded-xl text-white transition-all"
+            style={{ backgroundColor: '#7c3aed' }}
+          >
+            Mark as Done
+          </button>
+        )}
+
+        {showActions && isMyChore && chore.status === 'assigned' && showComplete && (
+          <div className="mt-3 p-3 rounded-xl" style={{ backgroundColor: '#f5f3ff' }}>
+            <p className="text-xs font-bold mb-2" style={{ color: '#6d28d9' }}>How long did it actually take?</p>
+            <div className="flex items-center gap-2">
               <input
                 type="number"
                 min="1"
                 value={actualMinutes}
                 onChange={e => setActualMinutes(e.target.value)}
-                className="w-20 text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-purple-400"
-                placeholder="mins"
+                onKeyDown={e => e.key === 'Enter' && handleComplete()}
+                autoFocus
+                placeholder="minutes"
+                className="w-24 text-sm px-3 py-1.5 rounded-lg outline-none"
+                style={{ border: '1.5px solid #c4b5fd', backgroundColor: 'white' }}
               />
               <button
                 onClick={handleComplete}
-                className="text-xs bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg font-medium transition-colors"
+                disabled={!actualMinutes || parseInt(actualMinutes) < 1}
+                className="text-sm font-semibold px-4 py-1.5 rounded-lg text-white transition-all disabled:opacity-40"
+                style={{ backgroundColor: '#7c3aed' }}
               >
-                Done
+                Done!
               </button>
-              <button
-                onClick={() => setShowComplete(false)}
-                className="text-xs text-gray-500 hover:text-gray-700"
-              >
-                Cancel
+              <button onClick={() => setShowComplete(false)} className="text-xs" style={{ color: '#a1a1aa' }}>
+                cancel
               </button>
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

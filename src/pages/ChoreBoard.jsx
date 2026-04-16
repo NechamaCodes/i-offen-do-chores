@@ -1,23 +1,19 @@
 import { useState } from 'react'
-import { Plus, Filter } from 'lucide-react'
 import { isPast } from 'date-fns'
 import useStore from '../store/useStore'
 import ChoreCard from '../components/ChoreCard'
-import AddChoreModal from '../components/AddChoreModal'
 
 const FILTERS = [
   { id: 'all', label: 'All' },
   { id: 'pending_acceptance', label: 'Pending' },
   { id: 'assigned', label: 'Active' },
   { id: 'overdue', label: 'Overdue' },
-  { id: 'completed', label: 'Completed' },
+  { id: 'completed', label: 'Done' },
 ]
 
-export default function ChoreBoard() {
-  const [showAdd, setShowAdd] = useState(false)
+export default function ChoreBoard({ onAddChore }) {
   const [filter, setFilter] = useState('all')
   const [memberFilter, setMemberFilter] = useState('all')
-
   const chores = useStore(s => s.chores)
   const members = useStore(s => s.members)
   const activeMemberId = useStore(s => s.activeMemberId)
@@ -30,60 +26,72 @@ export default function ChoreBoard() {
   }).sort((a, b) => new Date(a.deadline) - new Date(b.deadline))
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-black text-gray-900">Chore Board</h1>
-        <button
-          onClick={() => setShowAdd(true)}
-          className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors shadow-sm"
-        >
-          <Plus size={16} /> Assign Chore
-        </button>
+    <div className="p-8">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-extrabold" style={{ color: '#18181b' }}>Chore Board</h1>
+        <span className="text-sm font-medium px-3 py-1 rounded-full" style={{ backgroundColor: '#f4f4f8', color: '#71717a' }}>
+          {filtered.length} chore{filtered.length !== 1 ? 's' : ''}
+        </span>
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-4">
-        <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 mb-6">
+        {/* Status filter */}
+        <div className="flex gap-1 p-1 rounded-xl" style={{ backgroundColor: '#ffffff', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
           {FILTERS.map(f => (
             <button
               key={f.id}
               onClick={() => setFilter(f.id)}
-              className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-                filter === f.id ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-600 hover:text-gray-800'
-              }`}
+              className="px-4 py-1.5 rounded-lg text-sm font-semibold transition-all"
+              style={filter === f.id
+                ? { backgroundColor: '#7c3aed', color: '#ffffff' }
+                : { color: '#71717a', backgroundColor: 'transparent' }
+              }
             >
               {f.label}
             </button>
           ))}
         </div>
 
-        <select
-          value={memberFilter}
-          onChange={e => setMemberFilter(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white"
-        >
-          <option value="all">All Members</option>
-          {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-        </select>
+        {/* Member filter — avatars */}
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl" style={{ backgroundColor: '#ffffff', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+          <button
+            onClick={() => setMemberFilter('all')}
+            className="text-sm font-semibold px-2 py-1 rounded-lg transition-all"
+            style={{ color: memberFilter === 'all' ? '#7c3aed' : '#a1a1aa' }}
+          >
+            All
+          </button>
+          {members.map(m => (
+            <button
+              key={m.id}
+              onClick={() => setMemberFilter(m.id === memberFilter ? 'all' : m.id)}
+              title={m.name}
+              className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold transition-all"
+              style={{
+                backgroundColor: m.color,
+                opacity: memberFilter !== 'all' && memberFilter !== m.id ? 0.4 : 1,
+                boxShadow: memberFilter === m.id ? `0 0 0 2px white, 0 0 0 3.5px ${m.color}` : 'none',
+              }}
+            >
+              {m.name[0]}
+            </button>
+          ))}
+        </div>
       </div>
 
       {filtered.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
-          <Filter size={40} className="mx-auto mb-3 text-gray-300" />
-          <p className="text-sm">No chores match this filter.</p>
+        <div className="bg-white rounded-2xl flex flex-col items-center justify-center py-24 text-center" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+          <p className="font-bold text-base" style={{ color: '#3f3f46' }}>No chores match this filter.</p>
+          <button onClick={onAddChore} className="mt-3 text-sm font-bold" style={{ color: '#7c3aed' }}>+ Add a chore</button>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-3">
           {filtered.map(c => (
-            <ChoreCard
-              key={c.id}
-              chore={c}
-              showActions={c.assignedTo === activeMemberId}
-            />
+            <ChoreCard key={c.id} chore={c} showActions={c.assignedTo === activeMemberId} />
           ))}
         </div>
       )}
-
-      {showAdd && <AddChoreModal onClose={() => setShowAdd(false)} />}
     </div>
   )
 }
