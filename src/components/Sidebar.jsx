@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, ListTodo, History, MessageSquare, User, Plus, Sparkles } from 'lucide-react'
+import { LayoutDashboard, ListTodo, History, MessageSquare, User, Plus, Sparkles, LogOut } from 'lucide-react'
 import useStore from '../store/useStore'
 import MemberAvatar from './MemberAvatar'
 
@@ -16,6 +16,8 @@ export default function Sidebar({ onAddChore }) {
   const activeMemberId = useStore(s => s.activeMemberId)
   const setActiveMember = useStore(s => s.setActiveMember)
   const getPendingForMember = useStore(s => s.getPendingForMember)
+  const myMemberId = useStore(s => s.myMemberId)
+  const logout = useStore(s => s.logout)
 
   return (
     <aside className="w-60 shrink-0 min-h-screen flex flex-col sticky top-0" style={{ backgroundColor: '#18181b' }}>
@@ -94,8 +96,8 @@ export default function Sidebar({ onAddChore }) {
         ))}
       </nav>
 
-      {/* Add chore button */}
-      <div className="px-3 pb-6">
+      {/* Add chore button + logout */}
+      <div className="px-3 pb-6 space-y-2">
         <button
           onClick={onAddChore}
           className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all text-white"
@@ -105,6 +107,17 @@ export default function Sidebar({ onAddChore }) {
         >
           <Plus size={16} /> Add Chore
         </button>
+        {myMemberId && (
+          <button
+            onClick={logout}
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-semibold transition-all"
+            style={{ color: '#52525b' }}
+            onMouseEnter={e => e.currentTarget.style.color = '#a1a1aa'}
+            onMouseLeave={e => e.currentTarget.style.color = '#52525b'}
+          >
+            <LogOut size={13} /> Sign Out
+          </button>
+        )}
       </div>
     </aside>
   )

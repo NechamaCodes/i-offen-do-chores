@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { isPast } from 'date-fns'
 import {
-  collection, doc, addDoc, setDoc, updateDoc, deleteDoc, serverTimestamp
+  collection, doc, setDoc, updateDoc, deleteDoc
 } from 'firebase/firestore'
 import { db } from '../firebase'
 
@@ -13,7 +13,13 @@ export const CHORE_PREFERENCES = [
 
 const COLORS = ['#7c3aed', '#db2777', '#0891b2', '#16a34a', '#ea580c', '#9333ea', '#b45309', '#0f766e']
 
-// Local-only state persisted in localStorage (per device)
+async function hashPassword(password) {
+  const encoder = new TextEncoder()
+  const data = encoder.encode(password)
+  const hash = await crypto.subtle.digest('SHA-256', data)
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
 const localState = {
   familyCode: localStorage.getItem('offen-family-code') || null,
   activeMemberId: localStorage.getItem('offen-active-member') || null,
@@ -60,15 +66,39 @@ const useStore = create((set, get) => ({
   },
 
   setFamilyCode: (code) => {
-    localStorage.setItem('offen-family-code', code)
+    if (code) {
+      localStorage.setItem('offen-family-code', code)
+    } else {
+      localStorage.removeItem('offen-family-code')
+    }
     set({ familyCode: code })
   },
 
-  completeSetup: () => {
-    const { activeMemberId } = get()
+  // --- Auth actions ---
+  loginAndComplete: async (memberId, password, isFirstTime) => {
+    const { familyCode, members } = get()
+    const member = members.find(m => m.id === memberId)
+    if (!member) return false
+
+    const hash = await hashPassword(password)
+
+    if (isFirstTime) {
+      await updateDoc(familyDoc(familyCode, 'members', memberId), { passwordHash: hash })
+    } else {
+      if (hash !== member.passwordHash) return false
+    }
+
+    localStorage.setItem('offen-active-member', memberId)
+    localStorage.setItem('offen-my-member', memberId)
     localStorage.setItem('offen-setup-complete', 'true')
-    localStorage.setItem('offen-my-member', activeMemberId)
-    set({ setupComplete: true, myMemberId: activeMemberId })
+    set({ activeMemberId: memberId, myMemberId: memberId, setupComplete: true })
+    return true
+  },
+
+  logout: () => {
+    localStorage.removeItem('offen-my-member')
+    localStorage.removeItem('offen-setup-complete')
+    set({ myMemberId: null, setupComplete: false })
   },
 
   resetFamily: () => {
@@ -100,10 +130,8 @@ const useStore = create((set, get) => ({
     const { familyCode, members } = get()
     const color = COLORS[members.length % COLORS.length]
     const id = 'm' + Date.now()
-    const member = { id, name, color, preferences: [], loadMax: 150, avatar: null }
+    const member = { id, name, color, preferences: [], loadMax: 150, avatar: null, passwordHash: null }
     await setDoc(familyDoc(familyCode, 'members', id), member)
-    // Set as active if first member
-    if (!get().activeMemberId) get().setActiveMember(id)
     return id
   },
 
@@ -177,24 +205,24 @@ const useStore = create((set, get) => ({
     await deleteDoc(familyDoc(familyCode, 'chores', choreId))
   },
 
-  // --- Message actions ---
+  // --- Message actions (always authored as myMemberId) ---
   addMessage: async (text) => {
-    const { familyCode, activeMemberId } = get()
-    if (!text.trim() || !activeMemberId) return
+    const { familyCode, myMemberId } = get()
+    if (!text.trim() || !myMemberId) return
     const id = 'msg' + Date.now()
     await setDoc(familyDoc(familyCode, 'messages', id), {
-      id, authorId: activeMemberId, text: text.trim(),
+      id, authorId: myMemberId, text: text.trim(),
       createdAt: new Date().toISOString(), replies: [],
     })
   },
 
   addReply: async (messageId, text) => {
-    const { familyCode, activeMemberId, messages } = get()
-    if (!text.trim() || !activeMemberId) return
+    const { familyCode, myMemberId, messages } = get()
+    if (!text.trim() || !myMemberId) return
     const message = messages.find(m => m.id === messageId)
     if (!message) return
     const reply = {
-      id: 'rep' + Date.now(), authorId: activeMemberId,
+      id: 'rep' + Date.now(), authorId: myMemberId,
       text: text.trim(), createdAt: new Date().toISOString(),
     }
     await updateDoc(familyDoc(familyCode, 'messages', messageId), {
