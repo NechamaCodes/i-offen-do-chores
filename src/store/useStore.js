@@ -17,6 +17,7 @@ const COLORS = ['#7c3aed', '#db2777', '#0891b2', '#16a34a', '#ea580c', '#9333ea'
 const localState = {
   familyCode: localStorage.getItem('offen-family-code') || null,
   activeMemberId: localStorage.getItem('offen-active-member') || null,
+  myMemberId: localStorage.getItem('offen-my-member') || null,
   setupComplete: localStorage.getItem('offen-setup-complete') === 'true',
 }
 
@@ -42,6 +43,7 @@ const useStore = create((set, get) => ({
   // --- Local state (per device) ---
   familyCode: localState.familyCode,
   activeMemberId: localState.activeMemberId,
+  myMemberId: localState.myMemberId,
   setupComplete: localState.setupComplete,
   loading: true,
 
@@ -63,15 +65,18 @@ const useStore = create((set, get) => ({
   },
 
   completeSetup: () => {
+    const { activeMemberId } = get()
     localStorage.setItem('offen-setup-complete', 'true')
-    set({ setupComplete: true })
+    localStorage.setItem('offen-my-member', activeMemberId)
+    set({ setupComplete: true, myMemberId: activeMemberId })
   },
 
   resetFamily: () => {
     localStorage.removeItem('offen-family-code')
     localStorage.removeItem('offen-active-member')
+    localStorage.removeItem('offen-my-member')
     localStorage.removeItem('offen-setup-complete')
-    set({ familyCode: null, activeMemberId: null, setupComplete: false, members: [], chores: [], messages: [] })
+    set({ familyCode: null, activeMemberId: null, myMemberId: null, setupComplete: false, members: [], chores: [], messages: [] })
   },
 
   // --- Computed ---

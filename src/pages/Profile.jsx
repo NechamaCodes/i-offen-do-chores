@@ -41,7 +41,9 @@ export default function Profile() {
   const addMember = useStore(s => s.addMember)
   const chores = useStore(s => s.chores)
 
+  const myMemberId = useStore(s => s.myMemberId)
   const activeMember = members.find(m => m.id === activeMemberId)
+  const isMyProfile = activeMemberId === myMemberId
   const [prefs, setPrefs] = useState(activeMember?.preferences || [])
   const [loadMax, setLoadMax] = useState(activeMember?.loadMax || 150)
   const [newName, setNewName] = useState('')
@@ -100,7 +102,9 @@ export default function Profile() {
 
   return (
     <div className="p-8">
-      <h1 className="text-3xl font-extrabold mb-6" style={{ color: '#18181b' }}>My Profile</h1>
+      <h1 className="text-3xl font-extrabold mb-6" style={{ color: '#18181b' }}>
+        {isMyProfile ? 'My Profile' : `${activeMember?.name}'s Profile`}
+      </h1>
 
       <div className="grid grid-cols-3 gap-6">
         {/* Left: identity + workload + prefs */}
@@ -111,24 +115,28 @@ export default function Profile() {
             <div className="flex items-start gap-6">
               {/* Avatar with upload */}
               <div className="relative shrink-0">
-                {/* Clicking the avatar itself opens file picker */}
-                <button
-                  onClick={() => fileRef.current.click()}
-                  className="block rounded-full focus:outline-none"
-                  title="Click to change photo"
-                  style={{ cursor: 'pointer' }}
-                >
+                {isMyProfile ? (
+                  <button
+                    onClick={() => fileRef.current.click()}
+                    className="block rounded-full focus:outline-none"
+                    title="Click to change photo"
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <MemberAvatar memberId={activeMemberId} size={88} />
+                  </button>
+                ) : (
                   <MemberAvatar memberId={activeMemberId} size={88} />
-                </button>
-                {/* Always-visible camera badge */}
-                <button
-                  onClick={() => fileRef.current.click()}
-                  className="absolute bottom-0 right-0 w-7 h-7 rounded-full flex items-center justify-center text-white"
-                  style={{ backgroundColor: '#7c3aed', border: '2px solid white' }}
-                  title="Change photo"
-                >
-                  <Camera size={13} />
-                </button>
+                )}
+                {isMyProfile && (
+                  <button
+                    onClick={() => fileRef.current.click()}
+                    className="absolute bottom-0 right-0 w-7 h-7 rounded-full flex items-center justify-center text-white"
+                    style={{ backgroundColor: '#7c3aed', border: '2px solid white' }}
+                    title="Change photo"
+                  >
+                    <Camera size={13} />
+                  </button>
+                )}
                 <input
                   ref={fileRef}
                   type="file"
@@ -140,7 +148,7 @@ export default function Profile() {
 
               <div className="flex-1 min-w-0">
                 {/* Editable name */}
-                {editingName ? (
+                {isMyProfile && editingName ? (
                   <div className="flex items-center gap-2 mb-1">
                     <input
                       value={nameInput}
@@ -160,46 +168,57 @@ export default function Profile() {
                 ) : (
                   <div className="flex items-center gap-2 mb-1">
                     <h2 className="text-2xl font-bold" style={{ color: '#18181b' }}>{activeMember?.name}</h2>
-                    <button onClick={() => { setNameInput(activeMember?.name || ''); setEditingName(true) }} className="p-1.5 rounded-lg transition-all" style={{ color: '#a1a1aa' }} title="Edit name">
-                      <Pencil size={14} />
-                    </button>
+                    {isMyProfile && (
+                      <button onClick={() => { setNameInput(activeMember?.name || ''); setEditingName(true) }} className="p-1.5 rounded-lg transition-all" style={{ color: '#a1a1aa' }} title="Edit name">
+                        <Pencil size={14} />
+                      </button>
+                    )}
                   </div>
                 )}
 
                 <p className="text-sm mb-4" style={{ color: '#a1a1aa' }}>Offen Family Member</p>
 
                 {/* Avatar actions */}
-                <div className="flex gap-2 mb-4">
-                  {activeMember?.avatar && (
-                    <button
-                      onClick={handleRemovePhoto}
-                      className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg"
-                      style={{ backgroundColor: '#fef2f2', color: '#ef4444' }}
-                    >
-                      <X size={13} /> Remove photo
-                    </button>
-                  )}
-                </div>
+                {isMyProfile && (
+                  <div className="flex gap-2 mb-4">
+                    {activeMember?.avatar && (
+                      <button
+                        onClick={handleRemovePhoto}
+                        className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg"
+                        style={{ backgroundColor: '#fef2f2', color: '#ef4444' }}
+                      >
+                        <X size={13} /> Remove photo
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {/* Color picker */}
-                <div>
-                  <p className="text-xs font-bold mb-2" style={{ color: '#a1a1aa' }}>AVATAR COLOR</p>
-                  <div className="flex flex-wrap gap-2">
-                    {PALETTE.map(c => (
-                      <button
-                        key={c}
-                        onClick={() => updateMemberColor(activeMemberId, c)}
-                        className="w-7 h-7 rounded-full transition-all"
-                        style={{
-                          backgroundColor: c,
-                          boxShadow: activeMember?.color === c ? `0 0 0 2px white, 0 0 0 4px ${c}` : 'none',
-                          transform: activeMember?.color === c ? 'scale(1.15)' : 'scale(1)',
-                        }}
-                        title={c}
-                      />
-                    ))}
+                {isMyProfile ? (
+                  <div>
+                    <p className="text-xs font-bold mb-2" style={{ color: '#a1a1aa' }}>AVATAR COLOR</p>
+                    <div className="flex flex-wrap gap-2">
+                      {PALETTE.map(c => (
+                        <button
+                          key={c}
+                          onClick={() => updateMemberColor(activeMemberId, c)}
+                          className="w-7 h-7 rounded-full transition-all"
+                          style={{
+                            backgroundColor: c,
+                            boxShadow: activeMember?.color === c ? `0 0 0 2px white, 0 0 0 4px ${c}` : 'none',
+                            transform: activeMember?.color === c ? 'scale(1.15)' : 'scale(1)',
+                          }}
+                          title={c}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-full" style={{ backgroundColor: activeMember?.color }} />
+                    <span className="text-xs" style={{ color: '#a1a1aa' }}>Avatar color</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -220,12 +239,15 @@ export default function Profile() {
               ].map(preset => (
                 <button
                   key={preset.value}
-                  onClick={() => setLoadMax(preset.value)}
+                  onClick={() => isMyProfile && setLoadMax(preset.value)}
                   className="flex flex-col items-center py-4 px-3 rounded-xl font-bold transition-all"
-                  style={loadMax === preset.value
-                    ? { border: '2px solid #7c3aed', backgroundColor: '#f5f3ff', color: '#6d28d9' }
-                    : { border: '2px solid #e4e4e7', color: '#71717a' }
-                  }
+                  style={{
+                    ...(loadMax === preset.value
+                      ? { border: '2px solid #7c3aed', backgroundColor: '#f5f3ff', color: '#6d28d9' }
+                      : { border: '2px solid #e4e4e7', color: '#71717a' }),
+                    cursor: isMyProfile ? 'pointer' : 'default',
+                    opacity: isMyProfile ? 1 : 0.6,
+                  }}
                 >
                   {preset.label}
                   <span className="text-xs font-normal mt-1" style={{ color: '#a1a1aa' }}>{preset.sub}</span>
@@ -237,19 +259,23 @@ export default function Profile() {
           {/* Preferences */}
           <div className="bg-white rounded-2xl p-5" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
             <h3 className="font-bold mb-1" style={{ color: '#18181b' }}>Chore Preferences</h3>
-            <p className="text-sm mb-4" style={{ color: '#71717a' }}>Pick the chores you actually like doing.</p>
+            <p className="text-sm mb-4" style={{ color: '#71717a' }}>
+              {isMyProfile ? 'Pick the chores you actually like doing.' : `${activeMember?.name}'s chore preferences.`}
+            </p>
             <div className="flex flex-wrap gap-2">
               {CHORE_PREFERENCES.map(pref => {
                 const selected = prefs.includes(pref)
                 return (
                   <button
                     key={pref}
-                    onClick={() => togglePref(pref)}
+                    onClick={() => isMyProfile && togglePref(pref)}
                     className="px-4 py-2 rounded-full text-sm font-semibold transition-all"
-                    style={selected
-                      ? { border: '2px solid #7c3aed', backgroundColor: '#f5f3ff', color: '#6d28d9' }
-                      : { border: '2px solid #e4e4e7', color: '#71717a' }
-                    }
+                    style={{
+                      ...(selected
+                        ? { border: '2px solid #7c3aed', backgroundColor: '#f5f3ff', color: '#6d28d9' }
+                        : { border: '2px solid #e4e4e7', color: '#71717a' }),
+                      cursor: isMyProfile ? 'pointer' : 'default',
+                    }}
                   >
                     {pref}
                   </button>
@@ -259,14 +285,16 @@ export default function Profile() {
             <p className="text-xs mt-3" style={{ color: '#a1a1aa' }}>{prefs.length} selected</p>
           </div>
 
-          <button
-            onClick={handleSave}
-            className="flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold text-white transition-all"
-            style={{ backgroundColor: saved ? '#16a34a' : '#7c3aed' }}
-          >
-            <Save size={16} />
-            {saved ? 'Saved!' : 'Save Changes'}
-          </button>
+          {isMyProfile && (
+            <button
+              onClick={handleSave}
+              className="flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold text-white transition-all"
+              style={{ backgroundColor: saved ? '#16a34a' : '#7c3aed' }}
+            >
+              <Save size={16} />
+              {saved ? 'Saved!' : 'Save Changes'}
+            </button>
+          )}
         </div>
 
         {/* Right sidebar */}
