@@ -11,11 +11,18 @@ import Profile from './pages/Profile'
 import Onboarding from './pages/Onboarding'
 import AddChoreModal from './components/AddChoreModal'
 
-function AppShell() {
-  const [showAdd, setShowAdd] = useState(false)
+function Inner() {
+  const setupComplete = useStore(s => s.setupComplete)
+  const familyCode = useStore(s => s.familyCode)
   const loading = useStore(s => s.loading)
+  const [showAdd, setShowAdd] = useState(false)
 
+  // Start Firestore listeners as soon as there's a family code (even during onboarding)
   useFirestoreSync()
+
+  if (!familyCode || !setupComplete) {
+    return <Onboarding />
+  }
 
   if (loading) {
     return (
@@ -48,14 +55,9 @@ function AppShell() {
 }
 
 export default function App() {
-  const setupComplete = useStore(s => s.setupComplete)
-  const familyCode = useStore(s => s.familyCode)
-
-  if (!setupComplete || !familyCode) return <Onboarding />
-
   return (
     <BrowserRouter>
-      <AppShell />
+      <Inner />
     </BrowserRouter>
   )
 }

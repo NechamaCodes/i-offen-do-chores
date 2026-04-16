@@ -11,7 +11,10 @@ export default function useFirestoreSync() {
   const setLoading = useStore(s => s.setLoading)
 
   useEffect(() => {
-    if (!familyCode) return
+    if (!familyCode) {
+      setLoading(false)
+      return
+    }
 
     setLoading(true)
     let loaded = { members: false, chores: false, messages: false }
