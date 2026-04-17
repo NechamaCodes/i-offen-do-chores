@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { Save, UserPlus, Trash2, Pencil, Camera, Check, X } from 'lucide-react'
+import { Save, Trash2, Pencil, Camera, Check, X } from 'lucide-react'
 import useStore, { CHORE_PREFERENCES } from '../store/useStore'
 import LoadMeter from '../components/LoadMeter'
 import MemberAvatar from '../components/MemberAvatar'
@@ -38,7 +38,6 @@ export default function Profile() {
   const updateMemberColor = useStore(s => s.updateMemberColor)
   const updateMemberAvatar = useStore(s => s.updateMemberAvatar)
   const deleteMember = useStore(s => s.deleteMember)
-  const addMember = useStore(s => s.addMember)
   const chores = useStore(s => s.chores)
 
   const myMemberId = useStore(s => s.myMemberId)
@@ -46,7 +45,6 @@ export default function Profile() {
   const isMyProfile = activeMemberId === myMemberId
   const [prefs, setPrefs] = useState(activeMember?.preferences || [])
   const [loadMax, setLoadMax] = useState(activeMember?.loadMax || 150)
-  const [newName, setNewName] = useState('')
   const [saved, setSaved] = useState(false)
 
   // Name editing
@@ -337,21 +335,6 @@ export default function Profile() {
                   )}
                 </div>
               ))}
-            </div>
-            <div className="flex gap-2 pt-3" style={{ borderTop: '1px solid #f4f4f5' }}>
-              <input
-                value={newName}
-                onChange={e => setNewName(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleAddMember()}
-                placeholder="Add member…"
-                className="flex-1 text-sm px-3 py-2 rounded-lg outline-none"
-                style={{ backgroundColor: '#f4f4f8', border: '1.5px solid transparent' }}
-                onFocus={e => e.target.style.border = '1.5px solid #7c3aed'}
-                onBlur={e => e.target.style.border = '1.5px solid transparent'}
-              />
-              <button onClick={handleAddMember} className="px-3 py-2 rounded-lg text-white transition-all" style={{ backgroundColor: '#7c3aed' }}>
-                <UserPlus size={15} />
-              </button>
             </div>
           </div>
         </div>
