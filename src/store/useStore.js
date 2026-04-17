@@ -189,6 +189,14 @@ const useStore = create((set, get) => ({
     await updateDoc(familyDoc(familyCode, 'chores', choreId), { status: 'declined', assignedTo: null })
   },
 
+  reassignChore: async (choreId, memberId) => {
+    const { familyCode } = get()
+    await updateDoc(familyDoc(familyCode, 'chores', choreId), {
+      status: 'pending_acceptance',
+      assignedTo: memberId,
+    })
+  },
+
   completeChore: async (choreId, actualMinutes) => {
     const { familyCode, chores } = get()
     const chore = chores.find(c => c.id === choreId)

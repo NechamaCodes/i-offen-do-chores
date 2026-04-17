@@ -1,4 +1,4 @@
-import { Bell, AlertTriangle, Sparkles } from 'lucide-react'
+import { Bell, AlertTriangle, Sparkles, XCircle } from 'lucide-react'
 import { isPast } from 'date-fns'
 import useStore from '../store/useStore'
 import ChoreCard from '../components/ChoreCard'
@@ -24,6 +24,7 @@ export default function Dashboard({ onAddChore }) {
   const myCompleted = chores.filter(c => c.assignedTo === activeMemberId && c.status === 'completed')
   const overdue = myAssigned.filter(c => isPast(new Date(c.deadline)))
   const activeMember = members.find(m => m.id === activeMemberId)
+  const declined = chores.filter(c => c.status === 'declined')
 
   const familyStats = members.map(m => ({
     ...m,
@@ -76,6 +77,21 @@ export default function Dashboard({ onAddChore }) {
           </div>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
             {pending.map(c => <ChoreCard key={c.id} chore={c} />)}
+          </div>
+        </div>
+      )}
+
+      {/* Declined chores */}
+      {declined.length > 0 && (
+        <div className="rounded-2xl p-5 mb-6" style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca' }}>
+          <div className="flex items-center gap-2 mb-3">
+            <XCircle size={16} style={{ color: '#ef4444' }} />
+            <h2 className="font-bold text-sm" style={{ color: '#991b1b' }}>
+              {declined.length} chore{declined.length > 1 ? 's' : ''} declined — needs reassignment
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
+            {declined.map(c => <ChoreCard key={c.id} chore={c} showActions />)}
           </div>
         </div>
       )}

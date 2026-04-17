@@ -23,10 +23,13 @@ const LEFT_COLORS = {
 export default function ChoreCard({ chore, showActions = true }) {
   const [actualMinutes, setActualMinutes] = useState('')
   const [showComplete, setShowComplete] = useState(false)
+  const members = useStore(s => s.members)
   const myMemberId = useStore(s => s.myMemberId)
   const acceptChore = useStore(s => s.acceptChore)
   const declineChore = useStore(s => s.declineChore)
   const completeChore = useStore(s => s.completeChore)
+  const reassignChore = useStore(s => s.reassignChore)
+  const deleteChore = useStore(s => s.deleteChore)
 
   const isMyChore = chore.assignedTo === myMemberId
   const isOverdue = isPast(new Date(chore.deadline)) && chore.status !== 'completed'
@@ -119,6 +122,34 @@ export default function ChoreCard({ chore, showActions = true }) {
           >
             Mark as Done
           </button>
+        )}
+
+        {showActions && chore.status === 'declined' && (
+          <div className="mt-2 p-3 rounded-xl" style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca' }}>
+            <p className="text-xs font-bold mb-2" style={{ color: '#991b1b' }}>Declined — reassign to someone else?</p>
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {members.map(m => (
+                <button
+                  key={m.id}
+                  onClick={() => reassignChore(chore.id, m.id)}
+                  className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg transition-all"
+                  style={{ backgroundColor: 'white', color: '#3f3f46', border: '1px solid #e4e4e7' }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = '#7c3aed'}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = '#e4e4e7'}
+                >
+                  <MemberAvatar memberId={m.id} size={16} />
+                  {m.name}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => deleteChore(chore.id)}
+              className="text-xs font-semibold"
+              style={{ color: '#ef4444' }}
+            >
+              Delete chore
+            </button>
+          </div>
         )}
 
         {showActions && isMyChore && chore.status === 'assigned' && showComplete && (
