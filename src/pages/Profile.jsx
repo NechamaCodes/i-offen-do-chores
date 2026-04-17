@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Save, Trash2, Pencil, Check, X } from 'lucide-react'
 import useStore, { CHORE_PREFERENCES } from '../store/useStore'
 import LoadMeter from '../components/LoadMeter'
@@ -10,10 +10,9 @@ const PALETTE = [
   '#4f46e5', '#be123c', '#0369a1', '#15803d',
 ]
 
-
 export default function Profile() {
   const members = useStore(s => s.members)
-  const activeMemberId = useStore(s => s.activeMemberId)
+  const myMemberId = useStore(s => s.myMemberId)
   const updateMemberPreferences = useStore(s => s.updateMemberPreferences)
   const updateMemberLoadMax = useStore(s => s.updateMemberLoadMax)
   const updateMemberName = useStore(s => s.updateMemberName)
@@ -21,49 +20,56 @@ export default function Profile() {
   const deleteMember = useStore(s => s.deleteMember)
   const chores = useStore(s => s.chores)
 
-  const myMemberId = useStore(s => s.myMemberId)
-  const activeMember = members.find(m => m.id === activeMemberId)
-  const isMyProfile = activeMemberId === myMemberId
-  const [prefs, setPrefs] = useState(activeMember?.preferences || [])
-  const [loadMax, setLoadMax] = useState(activeMember?.loadMax || 150)
-  const [saved, setSaved] = useState(false)
+  const [viewingMemberId, setViewingMemberId] = useState(myMemberId)
+  const viewingMember = members.find(m => m.id === viewingMemberId)
+  const isMyProfile = viewingMemberId === myMemberId
 
-  // Name editing
+  const [prefs, setPrefs] = useState(viewingMember?.preferences || [])
+  const [loadMax, setLoadMax] = useState(viewingMember?.loadMax || 150)
+  const [saved, setSaved] = useState(false)
   const [editingName, setEditingName] = useState(false)
-  const [nameInput, setNameInput] = useState(activeMember?.name || '')
+  const [nameInput, setNameInput] = useState(viewingMember?.name || '')
+
+  // Reset local state when switching which member we're viewing
+  useEffect(() => {
+    setPrefs(viewingMember?.preferences || [])
+    setLoadMax(viewingMember?.loadMax || 150)
+    setNameInput(viewingMember?.name || '')
+    setEditingName(false)
+    setSaved(false)
+  }, [viewingMemberId])
 
   function togglePref(pref) {
     setPrefs(p => p.includes(pref) ? p.filter(x => x !== pref) : [...p, pref])
   }
 
   function handleSave() {
-    updateMemberPreferences(activeMemberId, prefs)
-    updateMemberLoadMax(activeMemberId, loadMax)
+    updateMemberPreferences(viewingMemberId, prefs)
+    updateMemberLoadMax(viewingMemberId, loadMax)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
 
   function commitName() {
-    if (nameInput.trim()) updateMemberName(activeMemberId, nameInput)
-    else setNameInput(activeMember?.name || '')
+    if (nameInput.trim()) updateMemberName(viewingMemberId, nameInput)
+    else setNameInput(viewingMember?.name || '')
     setEditingName(false)
   }
 
-
-  const myCompleted = chores.filter(c => c.assignedTo === activeMemberId && c.status === 'completed')
-  const onTime = myCompleted.filter(c => c.onTime).length
-  const totalTime = myCompleted.reduce((sum, c) => sum + (c.actualMinutes || 0), 0)
-  const avgAccuracy = myCompleted.length > 0
-    ? Math.round(myCompleted.reduce((sum, c) => {
+  const viewingCompleted = chores.filter(c => c.assignedTo === viewingMemberId && c.status === 'completed')
+  const onTime = viewingCompleted.filter(c => c.onTime).length
+  const totalTime = viewingCompleted.reduce((sum, c) => sum + (c.actualMinutes || 0), 0)
+  const avgAccuracy = viewingCompleted.length > 0
+    ? Math.round(viewingCompleted.reduce((sum, c) => {
         if (!c.actualMinutes || !c.estimatedMinutes) return sum
         return sum + (c.actualMinutes / c.estimatedMinutes)
-      }, 0) / myCompleted.length * 100)
+      }, 0) / viewingCompleted.length * 100)
     : null
 
   return (
     <div className="p-8">
       <h1 className="text-3xl font-extrabold mb-6" style={{ color: '#18181b' }}>
-        {isMyProfile ? 'My Profile' : `${activeMember?.name}'s Profile`}
+        {isMyProfile ? 'My Profile' : `${viewingMember?.name}'s Profile`}
       </h1>
 
       <div className="grid grid-cols-3 gap-6">
@@ -73,19 +79,17 @@ export default function Profile() {
           {/* Identity card */}
           <div className="bg-white rounded-2xl p-6" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
             <div className="flex items-start gap-6">
-              {/* Avatar with upload */}
-              <div className="relative shrink-0">
-                <MemberAvatar memberId={activeMemberId} size={88} />
+              <div className="shrink-0">
+                <MemberAvatar memberId={viewingMemberId} size={88} />
               </div>
 
               <div className="flex-1 min-w-0">
-                {/* Editable name */}
                 {isMyProfile && editingName ? (
                   <div className="flex items-center gap-2 mb-1">
                     <input
                       value={nameInput}
                       onChange={e => setNameInput(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') commitName(); if (e.key === 'Escape') { setNameInput(activeMember?.name || ''); setEditingName(false) } }}
+                      onKeyDown={e => { if (e.key === 'Enter') commitName(); if (e.key === 'Escape') { setNameInput(viewingMember?.name || ''); setEditingName(false) } }}
                       autoFocus
                       className="text-xl font-bold px-3 py-1 rounded-lg outline-none"
                       style={{ border: '2px solid #7c3aed', color: '#18181b', minWidth: 0, width: '100%' }}
@@ -93,15 +97,15 @@ export default function Profile() {
                     <button onClick={commitName} className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0" style={{ backgroundColor: '#7c3aed' }}>
                       <Check size={15} />
                     </button>
-                    <button onClick={() => { setNameInput(activeMember?.name || ''); setEditingName(false) }} className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: '#f4f4f8', color: '#71717a' }}>
+                    <button onClick={() => { setNameInput(viewingMember?.name || ''); setEditingName(false) }} className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: '#f4f4f8', color: '#71717a' }}>
                       <X size={15} />
                     </button>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 mb-1">
-                    <h2 className="text-2xl font-bold" style={{ color: '#18181b' }}>{activeMember?.name}</h2>
+                    <h2 className="text-2xl font-bold" style={{ color: '#18181b' }}>{viewingMember?.name}</h2>
                     {isMyProfile && (
-                      <button onClick={() => { setNameInput(activeMember?.name || ''); setEditingName(true) }} className="p-1.5 rounded-lg transition-all" style={{ color: '#a1a1aa' }} title="Edit name">
+                      <button onClick={() => { setNameInput(viewingMember?.name || ''); setEditingName(true) }} className="p-1.5 rounded-lg transition-all" style={{ color: '#a1a1aa' }} title="Edit name">
                         <Pencil size={14} />
                       </button>
                     )}
@@ -110,7 +114,6 @@ export default function Profile() {
 
                 <p className="text-sm mb-4" style={{ color: '#a1a1aa' }}>Offen Family Member</p>
 
-                {/* Color picker */}
                 {isMyProfile ? (
                   <div>
                     <p className="text-xs font-bold mb-2" style={{ color: '#a1a1aa' }}>AVATAR COLOR</p>
@@ -118,21 +121,20 @@ export default function Profile() {
                       {PALETTE.map(c => (
                         <button
                           key={c}
-                          onClick={() => updateMemberColor(activeMemberId, c)}
+                          onClick={() => updateMemberColor(viewingMemberId, c)}
                           className="w-7 h-7 rounded-full transition-all"
                           style={{
                             backgroundColor: c,
-                            boxShadow: activeMember?.color === c ? `0 0 0 2px white, 0 0 0 4px ${c}` : 'none',
-                            transform: activeMember?.color === c ? 'scale(1.15)' : 'scale(1)',
+                            boxShadow: viewingMember?.color === c ? `0 0 0 2px white, 0 0 0 4px ${c}` : 'none',
+                            transform: viewingMember?.color === c ? 'scale(1.15)' : 'scale(1)',
                           }}
-                          title={c}
                         />
                       ))}
                     </div>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full" style={{ backgroundColor: activeMember?.color }} />
+                    <div className="w-6 h-6 rounded-full" style={{ backgroundColor: viewingMember?.color }} />
                     <span className="text-xs" style={{ color: '#a1a1aa' }}>Avatar color</span>
                   </div>
                 )}
@@ -140,14 +142,16 @@ export default function Profile() {
             </div>
 
             <div className="mt-5 pt-5" style={{ borderTop: '1px solid #f4f4f5' }}>
-              <LoadMeter memberId={activeMemberId} />
+              <LoadMeter memberId={viewingMemberId} />
             </div>
           </div>
 
           {/* Workload cap */}
           <div className="bg-white rounded-2xl p-5" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
             <h3 className="font-bold mb-1" style={{ color: '#18181b' }}>Max Workload</h3>
-            <p className="text-sm mb-4" style={{ color: '#71717a' }}>How much can be assigned before others are blocked from adding more?</p>
+            <p className="text-sm mb-4" style={{ color: '#71717a' }}>
+              {isMyProfile ? 'How much can be assigned before others are blocked from adding more?' : `${viewingMember?.name}'s workload capacity.`}
+            </p>
             <div className="grid grid-cols-3 gap-3">
               {[
                 { label: 'Light', sub: '~1 hour', value: 60 },
@@ -163,7 +167,7 @@ export default function Profile() {
                       ? { border: '2px solid #7c3aed', backgroundColor: '#f5f3ff', color: '#6d28d9' }
                       : { border: '2px solid #e4e4e7', color: '#71717a' }),
                     cursor: isMyProfile ? 'pointer' : 'default',
-                    opacity: isMyProfile ? 1 : 0.6,
+                    opacity: isMyProfile ? 1 : 0.7,
                   }}
                 >
                   {preset.label}
@@ -177,7 +181,7 @@ export default function Profile() {
           <div className="bg-white rounded-2xl p-5" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
             <h3 className="font-bold mb-1" style={{ color: '#18181b' }}>Chore Preferences</h3>
             <p className="text-sm mb-4" style={{ color: '#71717a' }}>
-              {isMyProfile ? 'Pick the chores you actually like doing.' : `${activeMember?.name}'s chore preferences.`}
+              {isMyProfile ? 'Pick the chores you actually like doing.' : `${viewingMember?.name}'s preferred chores.`}
             </p>
             <div className="flex flex-wrap gap-2">
               {CHORE_PREFERENCES.map(pref => {
@@ -218,10 +222,12 @@ export default function Profile() {
         <div className="space-y-4">
           {/* Stats */}
           <div className="bg-white rounded-2xl p-5" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-            <h3 className="font-bold mb-4" style={{ color: '#18181b' }}>My Stats</h3>
+            <h3 className="font-bold mb-4" style={{ color: '#18181b' }}>
+              {isMyProfile ? 'My Stats' : `${viewingMember?.name}'s Stats`}
+            </h3>
             <div className="grid grid-cols-2 gap-3">
               {[
-                { label: 'Done', value: myCompleted.length, color: '#7c3aed' },
+                { label: 'Done', value: viewingCompleted.length, color: '#7c3aed' },
                 { label: 'On Time', value: onTime, color: '#16a34a' },
                 { label: 'Total Time', value: totalTime >= 60 ? `${Math.floor(totalTime / 60)}h ${totalTime % 60}m` : `${totalTime}m`, color: '#0891b2', span: true },
                 avgAccuracy !== null ? { label: 'Avg vs Estimate', value: `${avgAccuracy}%`, color: avgAccuracy <= 110 ? '#16a34a' : '#ea580c', span: true } : null,
@@ -234,17 +240,27 @@ export default function Profile() {
             </div>
           </div>
 
-          {/* Family members */}
+          {/* Family members — click to view their profile */}
           <div className="bg-white rounded-2xl p-5" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
             <h3 className="font-bold mb-4" style={{ color: '#18181b' }}>Family Members</h3>
-            <div className="space-y-2 mb-4">
+            <div className="space-y-1">
               {members.map(m => (
-                <div key={m.id} className="flex items-center gap-3 py-1">
+                <div
+                  key={m.id}
+                  className="flex items-center gap-3 px-2 py-2 rounded-xl transition-all"
+                  style={{
+                    backgroundColor: viewingMemberId === m.id ? '#f5f3ff' : 'transparent',
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => setViewingMemberId(m.id)}
+                >
                   <MemberAvatar memberId={m.id} size={32} />
-                  <span className="flex-1 text-sm font-semibold" style={{ color: '#3f3f46' }}>{m.name}</span>
-                  {members.length > 1 && (
+                  <span className="flex-1 text-sm font-semibold" style={{ color: viewingMemberId === m.id ? '#6d28d9' : '#3f3f46' }}>
+                    {m.name}{m.id === myMemberId ? ' (me)' : ''}
+                  </span>
+                  {members.length > 1 && m.id !== myMemberId && (
                     <button
-                      onClick={() => { if (confirm(`Remove ${m.name}?`)) deleteMember(m.id) }}
+                      onClick={e => { e.stopPropagation(); if (confirm(`Remove ${m.name}?`)) deleteMember(m.id) }}
                       style={{ color: '#d4d4d8' }}
                       onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
                       onMouseLeave={e => e.currentTarget.style.color = '#d4d4d8'}
