@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { collection, onSnapshot, orderBy, query } from 'firebase/firestore'
+import { collection, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
 import useStore from '../store/useStore'
 
@@ -23,22 +23,30 @@ export default function useFirestoreSync() {
       if (loaded.members && loaded.chores && loaded.messages) setLoading(false)
     }
 
+    function markLoaded(key) {
+      loaded[key] = true
+      checkDone()
+    }
+
+    // Safety net: never stay stuck loading more than 8 seconds
+    const timeout = setTimeout(() => setLoading(false), 8000)
+
     const unsubMembers = onSnapshot(
       collection(db, 'families', familyCode, 'members'),
       snap => {
         setMembers(snap.docs.map(d => d.data()))
-        loaded.members = true
-        checkDone()
-      }
+        markLoaded('members')
+      },
+      () => markLoaded('members')
     )
 
     const unsubChores = onSnapshot(
       collection(db, 'families', familyCode, 'chores'),
       snap => {
         setChores(snap.docs.map(d => d.data()))
-        loaded.chores = true
-        checkDone()
-      }
+        markLoaded('chores')
+      },
+      () => markLoaded('chores')
     )
 
     const unsubMessages = onSnapshot(
@@ -48,12 +56,13 @@ export default function useFirestoreSync() {
           .map(d => d.data())
           .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
         setMessages(msgs)
-        loaded.messages = true
-        checkDone()
-      }
+        markLoaded('messages')
+      },
+      () => markLoaded('messages')
     )
 
     return () => {
+      clearTimeout(timeout)
       unsubMembers()
       unsubChores()
       unsubMessages()
