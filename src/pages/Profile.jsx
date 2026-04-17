@@ -1,5 +1,7 @@
 import { useState, useRef } from 'react'
-import { Save, Trash2, Pencil, Camera, Check, X } from 'lucide-react'
+import { Save, Trash2, Pencil, Camera, Check, X, Loader } from 'lucide-react'
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
+import { storage } from '../firebase'
 import useStore, { CHORE_PREFERENCES } from '../store/useStore'
 import LoadMeter from '../components/LoadMeter'
 import MemberAvatar from '../components/MemberAvatar'
@@ -10,7 +12,7 @@ const PALETTE = [
   '#4f46e5', '#be123c', '#0369a1', '#15803d',
 ]
 
-function resizeImage(file, maxSize = 300) {
+function resizeToBlob(file, maxSize = 600) {
   return new Promise((resolve) => {
     const reader = new FileReader()
     reader.onload = e => {
@@ -18,10 +20,10 @@ function resizeImage(file, maxSize = 300) {
       img.onload = () => {
         const canvas = document.createElement('canvas')
         const scale = Math.min(maxSize / img.width, maxSize / img.height, 1)
-        canvas.width = img.width * scale
-        canvas.height = img.height * scale
+        canvas.width = Math.round(img.width * scale)
+        canvas.height = Math.round(img.height * scale)
         canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
-        resolve(canvas.toDataURL('image/jpeg', 0.8))
+        canvas.toBlob(resolve, 'image/jpeg', 0.85)
       }
       img.src = e.target.result
     }
@@ -52,6 +54,8 @@ export default function Profile() {
   const [nameInput, setNameInput] = useState(activeMember?.name || '')
 
   const fileRef = useRef()
+  const [uploading, setUploading] = useState(false)
+  const familyCode = useStore(s => s.familyCode)
 
   function togglePref(pref) {
     setPrefs(p => p.includes(pref) ? p.filter(x => x !== pref) : [...p, pref])
@@ -73,13 +77,25 @@ export default function Profile() {
   async function handlePhotoUpload(e) {
     const file = e.target.files?.[0]
     if (!file) return
-    const dataUrl = await resizeImage(file)
-    updateMemberAvatar(activeMemberId, dataUrl)
     e.target.value = ''
+    setUploading(true)
+    try {
+      const blob = await resizeToBlob(file)
+      const storageRef = ref(storage, `families/${familyCode}/avatars/${activeMemberId}.jpg`)
+      await uploadBytes(storageRef, blob)
+      const url = await getDownloadURL(storageRef)
+      await updateMemberAvatar(activeMemberId, url)
+    } finally {
+      setUploading(false)
+    }
   }
 
-  function handleRemovePhoto() {
-    updateMemberAvatar(activeMemberId, null)
+  async function handleRemovePhoto() {
+    try {
+      const storageRef = ref(storage, `families/${familyCode}/avatars/${activeMemberId}.jpg`)
+      await deleteObject(storageRef)
+    } catch (_) {}
+    await updateMemberAvatar(activeMemberId, null)
   }
 
   function handleAddMember() {
@@ -127,12 +143,13 @@ export default function Profile() {
                 )}
                 {isMyProfile && (
                   <button
-                    onClick={() => fileRef.current.click()}
+                    onClick={() => !uploading && fileRef.current.click()}
                     className="absolute bottom-0 right-0 w-7 h-7 rounded-full flex items-center justify-center text-white"
-                    style={{ backgroundColor: '#7c3aed', border: '2px solid white' }}
+                    style={{ backgroundColor: uploading ? '#a78bfa' : '#7c3aed', border: '2px solid white' }}
                     title="Change photo"
+                    disabled={uploading}
                   >
-                    <Camera size={13} />
+                    {uploading ? <Loader size={13} className="animate-spin" /> : <Camera size={13} />}
                   </button>
                 )}
                 <input
