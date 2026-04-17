@@ -89,7 +89,6 @@ export default function Onboarding() {
     setLoggingIn(true)
     try {
       const id = await addMember(newName.trim())
-      await new Promise(r => setTimeout(r, 600))
       await loginAndComplete(id, password, true)
     } finally {
       setLoggingIn(false)

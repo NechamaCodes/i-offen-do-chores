@@ -77,14 +77,14 @@ const useStore = create((set, get) => ({
   // --- Auth actions ---
   loginAndComplete: async (memberId, password, isFirstTime) => {
     const { familyCode, members } = get()
-    const member = members.find(m => m.id === memberId)
-    if (!member) return false
-
     const hash = await hashPassword(password)
 
     if (isFirstTime) {
+      // Just write the password — no need for member to be in local state yet
       await updateDoc(familyDoc(familyCode, 'members', memberId), { passwordHash: hash })
     } else {
+      const member = members.find(m => m.id === memberId)
+      if (!member) return false
       if (hash !== member.passwordHash) return false
     }
 
