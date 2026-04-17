@@ -1,7 +1,5 @@
-import { useState, useRef } from 'react'
-import { Save, Trash2, Pencil, Camera, Check, X, Loader } from 'lucide-react'
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
-import { storage } from '../firebase'
+import { useState } from 'react'
+import { Save, Trash2, Pencil, Check, X } from 'lucide-react'
 import useStore, { CHORE_PREFERENCES } from '../store/useStore'
 import LoadMeter from '../components/LoadMeter'
 import MemberAvatar from '../components/MemberAvatar'
@@ -12,24 +10,6 @@ const PALETTE = [
   '#4f46e5', '#be123c', '#0369a1', '#15803d',
 ]
 
-function resizeToBlob(file, maxSize = 600) {
-  return new Promise((resolve) => {
-    const reader = new FileReader()
-    reader.onload = e => {
-      const img = new Image()
-      img.onload = () => {
-        const canvas = document.createElement('canvas')
-        const scale = Math.min(maxSize / img.width, maxSize / img.height, 1)
-        canvas.width = Math.round(img.width * scale)
-        canvas.height = Math.round(img.height * scale)
-        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
-        canvas.toBlob(resolve, 'image/jpeg', 0.85)
-      }
-      img.src = e.target.result
-    }
-    reader.readAsDataURL(file)
-  })
-}
 
 export default function Profile() {
   const members = useStore(s => s.members)
@@ -38,7 +18,6 @@ export default function Profile() {
   const updateMemberLoadMax = useStore(s => s.updateMemberLoadMax)
   const updateMemberName = useStore(s => s.updateMemberName)
   const updateMemberColor = useStore(s => s.updateMemberColor)
-  const updateMemberAvatar = useStore(s => s.updateMemberAvatar)
   const deleteMember = useStore(s => s.deleteMember)
   const chores = useStore(s => s.chores)
 
@@ -52,10 +31,6 @@ export default function Profile() {
   // Name editing
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput] = useState(activeMember?.name || '')
-
-  const fileRef = useRef()
-  const [uploading, setUploading] = useState(false)
-  const familyCode = useStore(s => s.familyCode)
 
   function togglePref(pref) {
     setPrefs(p => p.includes(pref) ? p.filter(x => x !== pref) : [...p, pref])
@@ -74,35 +49,6 @@ export default function Profile() {
     setEditingName(false)
   }
 
-  async function handlePhotoUpload(e) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    e.target.value = ''
-    setUploading(true)
-    try {
-      const blob = await resizeToBlob(file)
-      const storageRef = ref(storage, `families/${familyCode}/avatars/${activeMemberId}.jpg`)
-      await uploadBytes(storageRef, blob)
-      const url = await getDownloadURL(storageRef)
-      await updateMemberAvatar(activeMemberId, url)
-    } finally {
-      setUploading(false)
-    }
-  }
-
-  async function handleRemovePhoto() {
-    try {
-      const storageRef = ref(storage, `families/${familyCode}/avatars/${activeMemberId}.jpg`)
-      await deleteObject(storageRef)
-    } catch (_) {}
-    await updateMemberAvatar(activeMemberId, null)
-  }
-
-  function handleAddMember() {
-    if (!newName.trim()) return
-    addMember(newName.trim())
-    setNewName('')
-  }
 
   const myCompleted = chores.filter(c => c.assignedTo === activeMemberId && c.status === 'completed')
   const onTime = myCompleted.filter(c => c.onTime).length
@@ -129,36 +75,7 @@ export default function Profile() {
             <div className="flex items-start gap-6">
               {/* Avatar with upload */}
               <div className="relative shrink-0">
-                {isMyProfile ? (
-                  <button
-                    onClick={() => fileRef.current.click()}
-                    className="block rounded-full focus:outline-none"
-                    title="Click to change photo"
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <MemberAvatar memberId={activeMemberId} size={88} />
-                  </button>
-                ) : (
-                  <MemberAvatar memberId={activeMemberId} size={88} />
-                )}
-                {isMyProfile && (
-                  <button
-                    onClick={() => !uploading && fileRef.current.click()}
-                    className="absolute bottom-0 right-0 w-7 h-7 rounded-full flex items-center justify-center text-white"
-                    style={{ backgroundColor: uploading ? '#a78bfa' : '#7c3aed', border: '2px solid white' }}
-                    title="Change photo"
-                    disabled={uploading}
-                  >
-                    {uploading ? <Loader size={13} className="animate-spin" /> : <Camera size={13} />}
-                  </button>
-                )}
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/*"
-                  style={{ display: 'none' }}
-                  onChange={handlePhotoUpload}
-                />
+                <MemberAvatar memberId={activeMemberId} size={88} />
               </div>
 
               <div className="flex-1 min-w-0">
@@ -192,21 +109,6 @@ export default function Profile() {
                 )}
 
                 <p className="text-sm mb-4" style={{ color: '#a1a1aa' }}>Offen Family Member</p>
-
-                {/* Avatar actions */}
-                {isMyProfile && (
-                  <div className="flex gap-2 mb-4">
-                    {activeMember?.avatar && (
-                      <button
-                        onClick={handleRemovePhoto}
-                        className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg"
-                        style={{ backgroundColor: '#fef2f2', color: '#ef4444' }}
-                      >
-                        <X size={13} /> Remove photo
-                      </button>
-                    )}
-                  </div>
-                )}
 
                 {/* Color picker */}
                 {isMyProfile ? (
