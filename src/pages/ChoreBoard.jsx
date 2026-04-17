@@ -16,7 +16,7 @@ export default function ChoreBoard({ onAddChore }) {
   const [memberFilter, setMemberFilter] = useState('all')
   const chores = useStore(s => s.chores)
   const members = useStore(s => s.members)
-  const activeMemberId = useStore(s => s.activeMemberId)
+  const myMemberId = useStore(s => s.myMemberId)
 
   const filtered = chores.filter(c => {
     if (memberFilter !== 'all' && c.assignedTo !== memberFilter) return false
@@ -88,7 +88,7 @@ export default function ChoreBoard({ onAddChore }) {
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-3">
           {filtered.map(c => (
-            <ChoreCard key={c.id} chore={c} showActions={c.assignedTo === activeMemberId} />
+            <ChoreCard key={c.id} chore={c} showActions={c.assignedTo === myMemberId} />
           ))}
         </div>
       )}

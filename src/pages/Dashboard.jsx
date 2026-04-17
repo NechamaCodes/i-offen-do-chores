@@ -36,7 +36,7 @@ export default function Dashboard({ onAddChore }) {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-extrabold" style={{ color: '#18181b' }}>
-          Hi, {activeMember?.name}! 👋
+          Hi, {activeMember?.name}!
         </h1>
         <p className="text-base mt-1" style={{ color: '#71717a' }}>
           {myAssigned.length === 0 ? "You're all caught up — enjoy the break!" : `You have ${myAssigned.length} active chore${myAssigned.length > 1 ? 's' : ''}.`}

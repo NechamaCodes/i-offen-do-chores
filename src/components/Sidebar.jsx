@@ -13,16 +13,17 @@ const NAV = [
 
 export default function Sidebar({ onAddChore }) {
   const members = useStore(s => s.members)
-  const activeMemberId = useStore(s => s.activeMemberId)
-  const setActiveMember = useStore(s => s.setActiveMember)
-  const getPendingForMember = useStore(s => s.getPendingForMember)
   const myMemberId = useStore(s => s.myMemberId)
   const logout = useStore(s => s.logout)
+  const getPendingForMember = useStore(s => s.getPendingForMember)
+
+  const myMember = members.find(m => m.id === myMemberId)
+  const pendingCount = getPendingForMember(myMemberId).length
 
   return (
     <aside className="w-60 shrink-0 min-h-screen flex flex-col sticky top-0" style={{ backgroundColor: '#18181b' }}>
       {/* Brand */}
-      <div className="px-5 pt-6 pb-5">
+      <div className="px-5 pt-6 pb-4">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center">
             <Sparkles size={16} className="text-white" />
@@ -34,43 +35,19 @@ export default function Sidebar({ onAddChore }) {
         </div>
       </div>
 
-      {/* Member switcher */}
+      {/* Logged-in user */}
       <div className="px-3 pb-4" style={{ borderBottom: '1px solid #27272a' }}>
-        <p className="text-xs font-semibold uppercase tracking-widest px-2 mb-2" style={{ color: '#52525b' }}>Family</p>
-        <div className="space-y-0.5">
-          {members.map(m => {
-            const isActive = m.id === activeMemberId
-            const pending = getPendingForMember(m.id).length
-            return (
-              <button
-                key={m.id}
-                onClick={() => setActiveMember(m.id)}
-                className="w-full flex items-center gap-3 px-2 py-2 rounded-lg transition-all text-left"
-                style={{
-                  backgroundColor: isActive ? '#27272a' : 'transparent',
-                }}
-                onMouseEnter={e => { if (!isActive) e.currentTarget.style.backgroundColor = '#1f1f21' }}
-                onMouseLeave={e => { if (!isActive) e.currentTarget.style.backgroundColor = 'transparent' }}
-              >
-                <div className="relative shrink-0">
-                  <MemberAvatar
-                    memberId={m.id}
-                    size={32}
-                    style={{ boxShadow: isActive ? `0 0 0 2px #18181b, 0 0 0 4px ${m.color}` : 'none' }}
-                  />
-                  {pending > 0 && (
-                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-white flex items-center justify-center font-bold leading-none" style={{ fontSize: '10px' }}>
-                      {pending}
-                    </span>
-                  )}
-                </div>
-                <span className="text-sm font-medium truncate" style={{ color: isActive ? '#ffffff' : '#a1a1aa' }}>
-                  {m.name}
-                </span>
-                {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-violet-500 shrink-0" />}
-              </button>
-            )
-          })}
+        <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl" style={{ backgroundColor: '#27272a' }}>
+          <MemberAvatar memberId={myMemberId} size={34} />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold truncate text-white">{myMember?.name}</p>
+            <p className="text-xs" style={{ color: '#52525b' }}>Signed in</p>
+          </div>
+          {pendingCount > 0 && (
+            <span className="w-5 h-5 bg-red-500 rounded-full text-white flex items-center justify-center font-bold shrink-0" style={{ fontSize: '10px' }}>
+              {pendingCount}
+            </span>
+          )}
         </div>
       </div>
 
@@ -96,7 +73,7 @@ export default function Sidebar({ onAddChore }) {
         ))}
       </nav>
 
-      {/* Add chore button + logout */}
+      {/* Add chore + Sign Out */}
       <div className="px-3 pb-6 space-y-2">
         <button
           onClick={onAddChore}
@@ -107,17 +84,15 @@ export default function Sidebar({ onAddChore }) {
         >
           <Plus size={16} /> Add Chore
         </button>
-        {myMemberId && (
-          <button
-            onClick={logout}
-            className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-semibold transition-all"
-            style={{ color: '#52525b' }}
-            onMouseEnter={e => e.currentTarget.style.color = '#a1a1aa'}
-            onMouseLeave={e => e.currentTarget.style.color = '#52525b'}
-          >
-            <LogOut size={13} /> Sign Out
-          </button>
-        )}
+        <button
+          onClick={logout}
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all"
+          style={{ backgroundColor: '#27272a', color: '#71717a' }}
+          onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#3f3f46'; e.currentTarget.style.color = '#e4e4e7' }}
+          onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#27272a'; e.currentTarget.style.color = '#71717a' }}
+        >
+          <LogOut size={14} /> Sign Out
+        </button>
       </div>
     </aside>
   )

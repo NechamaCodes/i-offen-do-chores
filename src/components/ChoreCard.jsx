@@ -1,16 +1,16 @@
 import { useState } from 'react'
 import { formatDistanceToNow, isPast, differenceInHours } from 'date-fns'
-import { CheckCircle, XCircle, Timer, User, Clock } from 'lucide-react'
+import { CheckCircle, XCircle, Timer, Clock } from 'lucide-react'
 import useStore from '../store/useStore'
 import MemberAvatar from './MemberAvatar'
 
 function getDeadlineInfo(deadline, status) {
-  if (status === 'completed') return { color: '#a1a1aa', label: null, bg: null }
+  if (status === 'completed') return { color: '#a1a1aa', label: null }
   const hours = differenceInHours(new Date(deadline), new Date())
-  if (isPast(new Date(deadline))) return { color: '#ef4444', label: 'Overdue', bg: '#fef2f2' }
-  if (hours < 3) return { color: '#f97316', label: 'Due soon', bg: '#fff7ed' }
-  if (hours < 24) return { color: '#eab308', label: null, bg: null }
-  return { color: '#a1a1aa', label: null, bg: null }
+  if (isPast(new Date(deadline))) return { color: '#ef4444', label: 'Overdue' }
+  if (hours < 3) return { color: '#f97316', label: 'Due soon' }
+  if (hours < 24) return { color: '#eab308', label: 'Today' }
+  return { color: '#a1a1aa', label: null }
 }
 
 const LEFT_COLORS = {
@@ -23,15 +23,12 @@ const LEFT_COLORS = {
 export default function ChoreCard({ chore, showActions = true }) {
   const [actualMinutes, setActualMinutes] = useState('')
   const [showComplete, setShowComplete] = useState(false)
-  const members = useStore(s => s.members)
-  const activeMemberId = useStore(s => s.activeMemberId)
+  const myMemberId = useStore(s => s.myMemberId)
   const acceptChore = useStore(s => s.acceptChore)
   const declineChore = useStore(s => s.declineChore)
   const completeChore = useStore(s => s.completeChore)
 
-  const assignee = members.find(m => m.id === chore.assignedTo)
-  const creator = members.find(m => m.id === chore.createdBy)
-  const isMyChore = chore.assignedTo === activeMemberId
+  const isMyChore = chore.assignedTo === myMemberId
   const isOverdue = isPast(new Date(chore.deadline)) && chore.status !== 'completed'
   const dl = getDeadlineInfo(chore.deadline, chore.status)
   const leftColor = isOverdue ? '#ef4444' : LEFT_COLORS[chore.status] || '#d4d4d8'
@@ -43,54 +40,48 @@ export default function ChoreCard({ chore, showActions = true }) {
     setShowComplete(false)
   }
 
+  function handleSkip() {
+    completeChore(chore.id, null)
+    setShowComplete(false)
+  }
+
   return (
     <div
       className="bg-white rounded-2xl p-4 flex gap-3"
       style={{
         borderLeft: `4px solid ${leftColor}`,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
       }}
     >
-      {assignee && <MemberAvatar memberId={chore.assignedTo} size={36} className="mt-0.5" />}
+      <MemberAvatar memberId={chore.assignedTo} size={34} className="mt-0.5 shrink-0" />
 
       <div className="flex-1 min-w-0">
-        {/* Title + status */}
+        {/* Title row */}
         <div className="flex items-start justify-between gap-2 mb-1">
-          <h3 className="font-bold text-zinc-900 leading-snug">{chore.title}</h3>
-          <div className="shrink-0 flex items-center gap-1.5">
+          <h3 className="font-bold text-sm leading-snug" style={{ color: '#18181b' }}>{chore.title}</h3>
+          <div className="flex items-center gap-1.5 shrink-0">
             {chore.status === 'pending_acceptance' && (
               <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: '#fef3c7', color: '#92400e' }}>Pending</span>
             )}
             {chore.status === 'completed' && (
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1" style={{ backgroundColor: '#dcfce7', color: '#166534' }}>
-                <CheckCircle size={10} /> Done
-              </span>
-            )}
-            {chore.category && (
-              <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#f4f4f8', color: '#71717a' }}>{chore.category}</span>
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: '#dcfce7', color: '#166534' }}>Done</span>
             )}
           </div>
         </div>
 
         {chore.description && (
-          <p className="text-sm mb-2" style={{ color: '#71717a' }}>{chore.description}</p>
+          <p className="text-xs mb-1.5 line-clamp-1" style={{ color: '#71717a' }}>{chore.description}</p>
         )}
 
-        {/* Deadline */}
-        <p className="text-sm font-semibold mb-2" style={{ color: dl.color }}>
-          {dl.label && <span className="mr-1">{dl.label} ·</span>}
-          Due {formatDistanceToNow(new Date(chore.deadline), { addSuffix: true })}
-        </p>
-
-        {/* Meta row */}
-        <div className="flex flex-wrap gap-3 text-xs" style={{ color: '#a1a1aa' }}>
-          <span className="flex items-center gap-1">
-            <Timer size={11} />
-            {chore.estimatedMinutes}m est{chore.actualMinutes ? ` · ${chore.actualMinutes}m actual` : ''}
+        {/* Deadline + time estimate */}
+        <div className="flex items-center gap-3 text-xs mb-2" style={{ color: '#a1a1aa' }}>
+          <span style={{ color: dl.color, fontWeight: dl.label ? 600 : 400 }}>
+            {dl.label ? `${dl.label} · ` : ''}{formatDistanceToNow(new Date(chore.deadline), { addSuffix: true })}
           </span>
-          {creator && creator.id !== chore.assignedTo && (
+          {chore.estimatedMinutes && (
             <span className="flex items-center gap-1">
-              <User size={11} /> by {creator.name}
+              <Timer size={11} /> {chore.estimatedMinutes}m
+              {chore.actualMinutes ? ` · ${chore.actualMinutes}m actual` : ''}
             </span>
           )}
           {chore.status === 'completed' && (
@@ -102,20 +93,20 @@ export default function ChoreCard({ chore, showActions = true }) {
 
         {/* Actions */}
         {showActions && isMyChore && chore.status === 'pending_acceptance' && (
-          <div className="flex gap-2 mt-3">
+          <div className="flex gap-2 mt-2">
             <button
               onClick={() => acceptChore(chore.id)}
-              className="flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl text-white transition-all"
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg text-white"
               style={{ backgroundColor: '#16a34a' }}
             >
-              <CheckCircle size={14} /> Accept
+              <CheckCircle size={13} /> Accept
             </button>
             <button
               onClick={() => declineChore(chore.id)}
-              className="flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all"
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg"
               style={{ backgroundColor: '#f4f4f5', color: '#52525b' }}
             >
-              <XCircle size={14} /> Decline
+              <XCircle size={13} /> Decline
             </button>
           </div>
         )}
@@ -123,7 +114,7 @@ export default function ChoreCard({ chore, showActions = true }) {
         {showActions && isMyChore && chore.status === 'assigned' && !showComplete && (
           <button
             onClick={() => setShowComplete(true)}
-            className="mt-3 text-sm font-semibold px-4 py-2 rounded-xl text-white transition-all"
+            className="mt-2 text-xs font-semibold px-3 py-1.5 rounded-lg text-white"
             style={{ backgroundColor: '#7c3aed' }}
           >
             Mark as Done
@@ -131,8 +122,8 @@ export default function ChoreCard({ chore, showActions = true }) {
         )}
 
         {showActions && isMyChore && chore.status === 'assigned' && showComplete && (
-          <div className="mt-3 p-3 rounded-xl" style={{ backgroundColor: '#f5f3ff' }}>
-            <p className="text-xs font-bold mb-2" style={{ color: '#6d28d9' }}>How long did it actually take?</p>
+          <div className="mt-2 p-3 rounded-xl" style={{ backgroundColor: '#f5f3ff' }}>
+            <p className="text-xs font-semibold mb-2" style={{ color: '#6d28d9' }}>How long did it take? <span style={{ fontWeight: 400, color: '#a78bfa' }}>(optional)</span></p>
             <div className="flex items-center gap-2">
               <input
                 type="number"
@@ -148,12 +139,15 @@ export default function ChoreCard({ chore, showActions = true }) {
               <button
                 onClick={handleComplete}
                 disabled={!actualMinutes || parseInt(actualMinutes) < 1}
-                className="text-sm font-semibold px-4 py-1.5 rounded-lg text-white transition-all disabled:opacity-40"
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white disabled:opacity-40"
                 style={{ backgroundColor: '#7c3aed' }}
               >
-                Done!
+                Done
               </button>
-              <button onClick={() => setShowComplete(false)} className="text-xs" style={{ color: '#a1a1aa' }}>
+              <button onClick={handleSkip} className="text-xs font-semibold" style={{ color: '#a78bfa' }}>
+                Skip
+              </button>
+              <button onClick={() => setShowComplete(false)} className="text-xs ml-auto" style={{ color: '#a1a1aa' }}>
                 cancel
               </button>
             </div>
