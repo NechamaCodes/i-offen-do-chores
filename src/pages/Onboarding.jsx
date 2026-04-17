@@ -66,7 +66,7 @@ export default function Onboarding() {
     e.preventDefault()
     if (loggingIn) return
     const member = members.find(m => m.id === selectedMemberId)
-    if (!member) return
+    if (!member) return setPasswordError('Member not found. Try refreshing.')
     setPasswordError('')
     if (!member.passwordHash) {
       if (password.length < 4) return setPasswordError('Password must be at least 4 characters.')
@@ -76,6 +76,9 @@ export default function Onboarding() {
     try {
       const ok = await loginAndComplete(selectedMemberId, password, !member.passwordHash)
       if (!ok) setPasswordError('Incorrect password.')
+    } catch (err) {
+      console.error('Login error:', err)
+      setPasswordError('Error: ' + (err?.message || 'Something went wrong. Check your internet connection.'))
     } finally {
       setLoggingIn(false)
     }
@@ -90,6 +93,9 @@ export default function Onboarding() {
     try {
       const id = await addMember(newName.trim())
       await loginAndComplete(id, password, true)
+    } catch (err) {
+      console.error('Sign up error:', err)
+      setPasswordError('Error: ' + (err?.message || 'Something went wrong. Check your internet connection.'))
     } finally {
       setLoggingIn(false)
     }
